@@ -1,22 +1,41 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const PORT = process.env.PORT || 3000;
 const STATES = ["idle", "search", "code", "write", "think"];
+const ACTIVE_WINDOW_MIN = parseInt(process.env.ACTIVE_WINDOW_MIN || "10", 10);
+const USE_OPENCLAW = process.env.OPENCLAW_MODE !== "off";
 
-let agentCount = 6;
-let agents = makeAgents(agentCount);
+let agents = [];
 const clients = new Set();
 
-function makeAgents(count) {
-  return Array.from({ length: count }, (_, i) => ({ id: i + 1, state: "idle" }));
+function mapSessionToState(session) {
+  // If session updated recently, mark as "code" (active); otherwise idle.
+  const active = session.ageMs <= ACTIVE_WINDOW_MIN * 60 * 1000;
+  return active ? "code" : "idle";
 }
 
-function randomizeAgents() {
-  agents.forEach(agent => {
-    agent.state = STATES[Math.floor(Math.random() * STATES.length)];
-  });
+function loadAgentsFromOpenClaw() {
+  try {
+    const raw = execSync("openclaw sessions --json", { encoding: "utf8" });
+    const data = JSON.parse(raw);
+    const sessions = data.sessions || [];
+    agents = sessions.map((s, idx) => ({
+      id: idx + 1,
+      name: s.key || `agent-${idx + 1}`,
+      state: mapSessionToState(s)
+    }));
+  } catch (_err) {
+    // fallback to random sim if openclaw isn't available
+    if (!agents.length) {
+      agents = Array.from({ length: 6 }, (_, i) => ({ id: i + 1, state: "idle" }));
+    }
+    agents.forEach(a => {
+      a.state = STATES[Math.floor(Math.random() * STATES.length)];
+    });
+  }
 }
 
 function broadcast() {
@@ -27,7 +46,11 @@ function broadcast() {
 }
 
 setInterval(() => {
-  randomizeAgents();
+  if (USE_OPENCLAW) {
+    loadAgentsFromOpenClaw();
+  } else {
+    agents.forEach(a => (a.state = STATES[Math.floor(Math.random() * STATES.length)]));
+  }
   broadcast();
 }, 1600);
 
@@ -35,13 +58,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === "/api/agents") {
-    const count = parseInt(url.searchParams.get("count"), 10);
-    if (!Number.isNaN(count)) {
-      agentCount = Math.max(1, Math.min(24, count));
-      agents = makeAgents(agentCount);
-      randomizeAgents();
-      broadcast();
-    }
+    if (USE_OPENCLAW) loadAgentsFromOpenClaw();
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ agents }));
     return;

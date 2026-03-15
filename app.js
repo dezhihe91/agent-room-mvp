@@ -114,6 +114,7 @@ function enableLive() {
   liveStatus.classList.add("active");
   stopSim();
   randomizeBtn.disabled = true;
+  agentCountInput.disabled = true;
   toggleLiveBtn.textContent = "Stop Live";
 
   if (eventSource) eventSource.close();
@@ -139,6 +140,7 @@ function disableLive() {
   liveMode = false;
   liveStatus.classList.remove("active");
   randomizeBtn.disabled = false;
+  agentCountInput.disabled = false;
   toggleLiveBtn.textContent = "Go Live";
   if (eventSource) eventSource.close();
   startSim();
@@ -160,9 +162,7 @@ agentCountInput.addEventListener("change", () => {
   const count = Math.max(1, Math.min(24, parseInt(agentCountInput.value, 10) || 1));
   agentCountInput.value = count;
   renderAgents(count);
-  if (liveMode) {
-    fetch(`/api/agents?count=${count}`).catch(() => {});
-  } else {
+  if (!liveMode) {
     randomizeStates();
   }
 });
