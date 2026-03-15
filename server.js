@@ -23,14 +23,15 @@ function loadAgentsFromOpenClaw() {
   try {
     const raw = execSync("openclaw sessions --json", { encoding: "utf8" });
     const data = JSON.parse(raw);
-    const sessions = (data.sessions || []).slice().sort((a, b) => {
-      return (a.key || "").localeCompare(b.key || "");
-    });
+    const sessions = (data.sessions || [])
+      .filter(s => s.ageMs <= ACTIVE_WINDOW_MIN * 60 * 1000)
+      .slice()
+      .sort((a, b) => (a.key || "").localeCompare(b.key || ""));
     agents = sessions.map((s, idx) => ({
       id: idx + 1,
       key: s.key || `agent-${idx + 1}`,
       name: s.key || `agent-${idx + 1}`,
-      state: mapSessionToState(s)
+      state: "code"
     }));
   } catch (_err) {
     // fallback to random sim if openclaw isn't available
