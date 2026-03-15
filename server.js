@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const chokidar = require("chokidar");
 
 const PORT = process.env.PORT || 3000;
 const STATES = ["idle", "search", "code", "write", "think"];
@@ -10,6 +11,7 @@ const USE_OPENCLAW = process.env.OPENCLAW_MODE !== "off";
 
 let agents = [];
 const clients = new Set();
+const reloadClients = new Set();
 
 function mapSessionToState(session) {
   // If session updated recently, mark as "code" (active); otherwise idle.
@@ -80,6 +82,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/reload") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    res.write(`data: reload\n\n`);
+    reloadClients.add(res);
+    req.on("close", () => reloadClients.delete(res));
+    return;
+  }
+
   let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
   const resolvedPath = path.join(__dirname, filePath);
   const ext = path.extname(resolvedPath).toLowerCase();
@@ -109,11 +123,6 @@ watcher.on("all", () => {
     res.write(`data: reload\n\n`);
   }
 });
-
-server.listen(PORT, () => {
-  console.log(`Agent Room MVP running at http://localhost:${PORT}`);
-});
-
 
 server.listen(PORT, () => {
   console.log(`Agent Room MVP running at http://localhost:${PORT}`);
