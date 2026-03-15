@@ -21,9 +21,12 @@ function loadAgentsFromOpenClaw() {
   try {
     const raw = execSync("openclaw sessions --json", { encoding: "utf8" });
     const data = JSON.parse(raw);
-    const sessions = data.sessions || [];
+    const sessions = (data.sessions || []).slice().sort((a, b) => {
+      return (a.key || "").localeCompare(b.key || "");
+    });
     agents = sessions.map((s, idx) => ({
       id: idx + 1,
+      key: s.key || `agent-${idx + 1}`,
       name: s.key || `agent-${idx + 1}`,
       state: mapSessionToState(s)
     }));

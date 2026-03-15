@@ -8,7 +8,6 @@ const liveStatus = document.getElementById("liveStatus");
 const STATES = ["idle", "search", "code", "write", "think"];
 let simRunning = true;
 let simTimer = null;
-
 let liveMode = false;
 let eventSource = null;
 
@@ -28,10 +27,12 @@ function pickZone(state, index) {
   return zoneList[index % zoneList.length];
 }
 
-function makeAgent(id) {
+function makeAgent(agent, index) {
   const el = document.createElement("div");
   el.className = "agent idle";
-  el.dataset.x = 120 + (id % 6) * 120;
+  el.dataset.key = agent.key || `agent-${index + 1}`;
+  el.dataset.state = "idle";
+  el.dataset.x = 120 + (index % 6) * 120;
   el.dataset.y = 320;
   el.style.setProperty("--x", `${el.dataset.x}px`);
   el.style.setProperty("--y", `${el.dataset.y}px`);
@@ -41,16 +42,16 @@ function makeAgent(id) {
       <div class="face"><div class="mouth"></div></div>
       <div class="bubble">Idle</div>
     </div>
-    <div class="status">Agent ${id}</div>
+    <div class="status">${agent.key || `Agent ${index + 1}`}</div>
   `;
   return el;
 }
 
-function renderAgents(count) {
+function renderAgentsFromList(list) {
   agentsEl.innerHTML = "";
-  for (let i = 1; i <= count; i++) {
-    agentsEl.appendChild(makeAgent(i));
-  }
+  list.forEach((agent, idx) => {
+    agentsEl.appendChild(makeAgent(agent, idx));
+  });
 }
 
 function moveAgent(agentEl, target) {
@@ -79,6 +80,8 @@ function moveAgent(agentEl, target) {
 }
 
 function setAgentState(agentEl, state, index = 0) {
+  if (agentEl.dataset.state === state) return;
+  agentEl.dataset.state = state;
   STATES.forEach(s => agentEl.classList.remove(s));
   agentEl.classList.add(state);
   const bubble = agentEl.querySelector(".bubble");
@@ -123,7 +126,7 @@ function enableLive() {
     const data = JSON.parse(ev.data);
     if (!data?.agents) return;
     if (agentsEl.children.length !== data.agents.length) {
-      renderAgents(data.agents.length);
+      renderAgentsFromList(data.agents);
     }
     data.agents.forEach((a, idx) => {
       const agentEl = agentsEl.children[idx];
@@ -161,14 +164,18 @@ toggleLiveBtn.addEventListener("click", () => {
 agentCountInput.addEventListener("change", () => {
   const count = Math.max(1, Math.min(24, parseInt(agentCountInput.value, 10) || 1));
   agentCountInput.value = count;
-  renderAgents(count);
+  renderAgentsFromList(
+    Array.from({ length: count }, (_, i) => ({ key: `Agent ${i + 1}` }))
+  );
   if (!liveMode) {
     randomizeStates();
   }
 });
 
 // Init
-renderAgents(parseInt(agentCountInput.value, 10));
+renderAgentsFromList(
+  Array.from({ length: parseInt(agentCountInput.value, 10) }, (_, i) => ({ key: `Agent ${i + 1}` }))
+);
 randomizeStates();
 startSim();
 
