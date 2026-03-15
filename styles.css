@@ -19,6 +19,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .header {
@@ -56,6 +57,11 @@ body {
   background: #0f1422;
   color: var(--text);
   cursor: pointer;
+}
+
+.controls button.live {
+  border-color: rgba(34,211,238,0.6);
+  box-shadow: 0 0 10px rgba(34,211,238,0.25);
 }
 .controls button:disabled {
   opacity: 0.5;
@@ -222,6 +228,27 @@ body {
 .agent.code .bubble::after { content: "💻"; margin-left: 4px; }
 .agent.write .bubble::after { content: "✍️"; margin-left: 4px; }
 .agent.think .bubble::after { content: "💡"; margin-left: 4px; }
+
+.live-status {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  background: rgba(34,211,238,0.12);
+  border: 1px solid rgba(34,211,238,0.6);
+  color: #67e8f9;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.live-status.active {
+  opacity: 1;
+}
 
 .legend {
   padding: 12px 24px 20px;

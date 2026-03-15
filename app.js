@@ -2,21 +2,24 @@ const agentsEl = document.getElementById("agents");
 const agentCountInput = document.getElementById("agentCount");
 const randomizeBtn = document.getElementById("randomize");
 const toggleSimBtn = document.getElementById("toggleSim");
+const toggleLiveBtn = document.getElementById("toggleLive");
+const liveStatus = document.getElementById("liveStatus");
 
 const STATES = ["idle", "search", "code", "write", "think"];
 let simRunning = true;
 let simTimer = null;
+
 let liveMode = false;
 let eventSource = null;
 
 const ZONES = {
-  code: [{ x: 70, y: 260 }, { x: 620, y: 260 }],
-  write: [{ x: 320, y: 70 }],
-  search: [{ x: 640, y: 70 }],
-  think: [{ x: 220, y: 260 }],
+  code: [{ x: 80, y: 270 }, { x: 520, y: 270 }],
+  write: [{ x: 280, y: 90 }],
+  search: [{ x: 540, y: 90 }],
+  think: [{ x: 240, y: 260 }, { x: 360, y: 260 }],
   idle: [
-    { x: 120, y: 320 }, { x: 240, y: 330 }, { x: 360, y: 320 },
-    { x: 480, y: 330 }, { x: 600, y: 320 }, { x: 720, y: 330 }
+    { x: 90, y: 330 }, { x: 200, y: 350 }, { x: 320, y: 340 },
+    { x: 440, y: 350 }, { x: 560, y: 330 }
   ]
 };
 
@@ -97,20 +100,21 @@ function startSim() {
   if (simTimer) clearInterval(simTimer);
   simTimer = setInterval(randomizeStates, 1600);
   simRunning = true;
-  toggleSimBtn.textContent = liveMode ? "Live" : "Pause";
+  toggleSimBtn.textContent = "Pause";
 }
 
 function stopSim() {
   if (simTimer) clearInterval(simTimer);
   simRunning = false;
-  toggleSimBtn.textContent = liveMode ? "Live" : "Resume";
+  toggleSimBtn.textContent = "Resume";
 }
 
 function enableLive() {
   liveMode = true;
+  liveStatus.classList.add("active");
   stopSim();
-  toggleSimBtn.textContent = "Live";
   randomizeBtn.disabled = true;
+  toggleLiveBtn.textContent = "Stop Live";
 
   if (eventSource) eventSource.close();
   eventSource = new EventSource("/api/agents/stream");
@@ -122,20 +126,20 @@ function enableLive() {
     }
     data.agents.forEach((a, idx) => {
       const agentEl = agentsEl.children[idx];
-      setAgentState(agentEl, a.state, idx);
+      if (agentEl) setAgentState(agentEl, a.state, idx);
     });
   };
   eventSource.onerror = () => {
     eventSource?.close();
-    liveMode = false;
-    randomizeBtn.disabled = false;
-    startSim();
+    disableLive();
   };
 }
 
 function disableLive() {
   liveMode = false;
+  liveStatus.classList.remove("active");
   randomizeBtn.disabled = false;
+  toggleLiveBtn.textContent = "Go Live";
   if (eventSource) eventSource.close();
   startSim();
 }
@@ -143,11 +147,13 @@ function disableLive() {
 randomizeBtn.addEventListener("click", randomizeStates);
 
 toggleSimBtn.addEventListener("click", () => {
-  if (liveMode) {
-    disableLive();
-  } else {
+  if (!liveMode) {
     simRunning ? stopSim() : startSim();
   }
+});
+
+toggleLiveBtn.addEventListener("click", () => {
+  liveMode ? disableLive() : enableLive();
 });
 
 agentCountInput.addEventListener("change", () => {
@@ -155,7 +161,7 @@ agentCountInput.addEventListener("change", () => {
   agentCountInput.value = count;
   renderAgents(count);
   if (liveMode) {
-    fetch(`/api/agents/count/${count}`).catch(() => {});
+    fetch(`/api/agents?count=${count}`).catch(() => {});
   } else {
     randomizeStates();
   }

@@ -1,56 +1,85 @@
-import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
-const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const PORT = process.env.PORT || 3000;
 const STATES = ["idle", "search", "code", "write", "think"];
+
 let agentCount = 6;
-let agents = Array.from({ length: agentCount }, (_, i) => ({ id: i + 1, state: "idle" }));
+let agents = makeAgents(agentCount);
+const clients = new Set();
 
-function randomState() {
-  return STATES[Math.floor(Math.random() * STATES.length)];
+function makeAgents(count) {
+  return Array.from({ length: count }, (_, i) => ({ id: i + 1, state: "idle" }));
 }
 
-function tick() {
-  agents = agents.map(a => ({ ...a, state: randomState() }));
+function randomizeAgents() {
+  agents.forEach(agent => {
+    agent.state = STATES[Math.floor(Math.random() * STATES.length)];
+  });
 }
 
-setInterval(tick, 1600);
+function broadcast() {
+  const payload = JSON.stringify({ agents });
+  for (const res of clients) {
+    res.write(`data: ${payload}\n\n`);
+  }
+}
 
-app.use(express.static(__dirname));
+setInterval(() => {
+  randomizeAgents();
+  broadcast();
+}, 1600);
 
-app.get("/api/agents", (_req, res) => {
-  res.json({ agents });
-});
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
 
-app.get("/api/agents/stream", (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+  if (url.pathname === "/api/agents") {
+    const count = parseInt(url.searchParams.get("count"), 10);
+    if (!Number.isNaN(count)) {
+      agentCount = Math.max(1, Math.min(24, count));
+      agents = makeAgents(agentCount);
+      randomizeAgents();
+      broadcast();
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ agents }));
+    return;
+  }
 
-  const send = () => {
+  if (url.pathname === "/api/agents/stream") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
     res.write(`data: ${JSON.stringify({ agents })}\n\n`);
+    clients.add(res);
+    req.on("close", () => clients.delete(res));
+    return;
+  }
+
+  let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
+  const resolvedPath = path.join(__dirname, filePath);
+  const ext = path.extname(resolvedPath).toLowerCase();
+  const typeMap = {
+    ".html": "text/html",
+    ".css": "text/css",
+    ".js": "text/javascript",
   };
 
-  const timer = setInterval(send, 1600);
-  send();
-
-  req.on("close", () => {
-    clearInterval(timer);
+  fs.readFile(resolvedPath, (err, data) => {
+    if (err) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+      return;
+    }
+    res.writeHead(200, { "Content-Type": typeMap[ext] || "text/plain" });
+    res.end(data);
   });
 });
 
-app.get("/api/agents/count/:count", (req, res) => {
-  const count = Math.max(1, Math.min(24, parseInt(req.params.count, 10) || 1));
-  agentCount = count;
-  agents = Array.from({ length: agentCount }, (_, i) => ({ id: i + 1, state: randomState() }));
-  res.json({ agents });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Agent Room server running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Agent Room MVP running at http://localhost:${PORT}`);
 });
