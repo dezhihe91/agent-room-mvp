@@ -100,6 +100,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
+const watcher = chokidar.watch(["./index.html", "./styles.css", "./app.js"], {
+  ignoreInitial: true,
+});
+
+watcher.on("all", () => {
+  for (const res of reloadClients) {
+    res.write(`data: reload\n\n`);
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`Agent Room MVP running at http://localhost:${PORT}`);
+});
+
+
 server.listen(PORT, () => {
   console.log(`Agent Room MVP running at http://localhost:${PORT}`);
 });

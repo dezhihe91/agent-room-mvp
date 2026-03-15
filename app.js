@@ -183,3 +183,11 @@ startSim();
 fetch("/api/agents")
   .then(() => enableLive())
   .catch(() => {});
+
+// Auto-reload on file changes (dev)
+try {
+  const reloadSource = new EventSource("/api/reload");
+  reloadSource.onmessage = () => {
+    window.location.reload();
+  };
+} catch (_) {}
