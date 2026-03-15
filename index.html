@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Room MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div>
+        <h1>Agent Room</h1>
+        <p class="sub">Q 版卡通 · 2D · MVP</p>
+      </div>
+      <div class="controls">
+        <label>Agents
+          <input id="agentCount" type="number" min="1" max="24" value="6" />
+        </label>
+        <button id="randomize">Randomize Work</button>
+        <button id="toggleSim">Pause</button>
+      </div>
+    </header>
+
+    <main class="room">
+      <div class="wall"></div>
+      <div class="floor"></div>
+      <div class="desk desk-left"></div>
+      <div class="desk desk-right"></div>
+      <div class="whiteboard"></div>
+      <div class="plant"></div>
+
+      <div id="agents" class="agents"></div>
+    </main>
+
+    <footer class="legend">
+      <span class="chip idle">Idle</span>
+      <span class="chip search">Search</span>
+      <span class="chip code">Code</span>
+      <span class="chip write">Write</span>
+      <span class="chip think">Think</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
